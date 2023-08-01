@@ -12,7 +12,6 @@ app.use(bodyParser.json());
 app.use(express.urlencoded( {extended: true } ));
 
 // routes
-
 app.use( "/api/auth", require("./routes/auth") );
 app.use(verify);
 app.use("/api/budget", require("./routes/budget") );
