@@ -31,9 +31,11 @@ router.get( '/options', async( req, res ) => {
 router.get('/items-disbursed', async (req, res) => {
   try {
     const data = await db.raw( 
-      `SELECT disbursed_item.id AS id, disbursed_item.code AS code, disbursed_items.psu_code AS psu_code, disbursed_item.withdrawal_amount AS withdrawal_amount, items.name, disbursed_items.date AS date
-        FROM disbursed_items INNER JOIN list 
-        ON list.itemcode = disburse.itemcode ;` 
+      ` SELECT disbursed_items.id, disbursed_items.code, items.name, psu_code, withdrawal_amount, date
+        FROM disbursed_items 
+        INNER JOIN items ON items.code = disbursed_items.code
+        ;
+      `
       ) ;
     res.json(data[0]);
   } catch (error) {
@@ -44,11 +46,11 @@ router.get('/items-disbursed', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const data = await db.raw( 
-        `SELECT disburse.id, fac.fac, disburse.itemcode, list.item, disburse.psu_number,  list.dis_amount, disburse.amount, disburse.date
-            FROM disburse INNER JOIN list 
-            ON list.itemcode = disburse.itemcode 
-            INNER JOIN fac ON fac.id_fac = list.id_fac
-            WHERE id = ? ;
+        `SELECT disbursed_items.id, facs.fac, items.code, items.name, psu_code, items.balance , withdrawal_amount, date
+          FROM disbursed_items INNER JOIN items
+          ON items.code = disbursed_items.code
+          INNER JOIN facs ON facs.id = items.facID
+          WHERE disbursed_items.id = ? ;
             `, [req.params.id]);
         res.status(200).json(...data[0]);
     } catch (error) {
