@@ -52,14 +52,6 @@ router.put('/disburse', async (req, res) => {
       oldAmount = Number(oldAmount);
       amount = Number(amount);
 
-      console.log("balance =>", balance);
-      console.log("total_amount =>", total_amount);
-      console.log("oldAmount =>", oldAmount);
-      console.log("amount =>", amount);
-
-      console.log("balance + oldAmount - amount =>", balance + oldAmount - amount);
-      console.log("balance - amount =>", balance - amount);
-
       if ( balance < amount || (balance + oldAmount) < amount ) return res.status(404).json( {error: "ยอดเงินไม่เพียงพอ"} );
 
 
@@ -120,6 +112,26 @@ router.delete('/:id', async (req, res) => {
     console.log(error.message);
     res.json(error.message);
   }
-})
+});
+
+router.post('/additemcode', async(req, res) => {
+  try {
+    const { code, total_amount, name, fac, type, product } = req.body;
+    const codeQuery = await db.raw(`
+      SELECT code FROM items
+      WHERE code = ? ;
+    `, [code]);
+    if ( !!codeQuery[0][0] ) return res.status(404).json( { error: 'Itemcode ซ้ำ' })
+    await db.raw(`
+      INSERT INTO items ( code, name, total_amount, facID, typeID, productID, status, balance ) 
+      VALUES ( ?, ?, ?, ?, ?, ?, ?, ? )
+    `, [code, name, total_amount, fac, type, product, 's', total_amount]);
+    res.json(req.body);
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json( {error: "Internal Server Error"} );
+  }
+
+});
 
 module.exports = router;

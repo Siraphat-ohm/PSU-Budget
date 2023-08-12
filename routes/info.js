@@ -1,10 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
-const db = require("../db/index")
+const db = require("../db/index");
 
-router.get( '/options', async( req, res ) => {
+router.get( '/options/:opt', async( req, res ) => {
     try {
+      const { opt } = req.params;
+      if ( opt == "disbursed"){
         let rawData = await db.raw(`
                                     SELECT fac, id FROM facs 
                                     WHERE userID = ? ;`,
@@ -21,7 +23,20 @@ router.get( '/options', async( req, res ) => {
           return result;
         }, {});
 
-        res.json( { fac_opt, code_opt: groupedData} )
+        res.json( { fac_opt, code_opt: groupedData} );
+      } else if ( opt == "add" ) {
+        const typeQuery = await db.raw(`SELECT * FROM types ;`);
+        const productQuery = await db.raw(`SELECT * FROM products ;`)
+        const facQuery = await db.raw(`
+                                      SELECT * FROM facs 
+                                      WHERE userID = ? ;
+                                    `, [req.id]);
+        const fac_opt = facQuery[0].map( item =>  { return { label: item.fac, id: item.id } } );
+        const type_opt = typeQuery[0].map( item => { return { label: item.type, id: item.id }} );
+        const product_opt = productQuery[0].map( item => { return { label: item.product, id: item.id }})
+        const data = { type_opt, product_opt, fac_opt };
+        res.json(data);
+      }
 
     } catch(error) {
         res.status(500).json(error.message);
@@ -39,9 +54,9 @@ router.get('/items-disbursed', async (req, res) => {
       ) ;
     res.json(data[0]);
   } catch (error) {
-    res.json(error) 
+    res.json(error);
   }
-})
+});
 
 router.get('/:id', async (req, res) => {
     try {
@@ -56,6 +71,6 @@ router.get('/:id', async (req, res) => {
     } catch (error) {
         res.status(404).json(error.message);
     }
-})
+});
 
 module.exports = router;
