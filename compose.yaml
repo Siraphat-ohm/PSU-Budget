@@ -1,0 +1,12 @@
+version: '3.9'
+
+services:
+  db:
+    image: mysql
+    container_name: Trout
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=banana
+      - TZ=Asia/Bangkok
+    command: ['mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci','--default-time-zone=+07:00']

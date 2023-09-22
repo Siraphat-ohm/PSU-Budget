@@ -15,7 +15,7 @@ router.post('/disburse', async (req, res) => {
       if ( balanceQuery[0].length === 0 ) res.status(404).json( {error: "ไม่พบitemcode"});
       let balance = Number(balanceQuery[0][0].balance);
       let newBalance = balance - Number(amount);
-      if ( newBalance <= 0 ) res.status(404).json( {error: "ยอดเงินไม่เพียงพอ"});
+      if ( newBalance <= 0 ) return res.status(404).json( {error: "ยอดเงินไม่เพียงพอ"});
       
       await db.raw(`
         INSERT INTO disbursed_items ( userID, code, withdrawal_amount, psu_code, date, facID ) 
@@ -40,6 +40,8 @@ router.put('/disburse', async (req, res) => {
     try {
       let { id, code, psu_code, amount, date, oldAmount } = req.body;
       const formattedDate = date ? new Date(date).toISOString().slice(0, 10) : null;
+      console.log("date: ", date);
+      console.log("format date: ", formattedDate);
       const balanceQueryResult = await db.raw(`
         SELECT balance, total_amount
         FROM items 
@@ -65,7 +67,6 @@ router.put('/disburse', async (req, res) => {
         SET ${update_column.join(', ')} 
         WHERE id = ? ;
       `
-      console.log(updateQuery);
       await db.raw(updateQuery, [id]);
 
       const balanceQuery = `
@@ -73,7 +74,6 @@ router.put('/disburse', async (req, res) => {
         SET balance = ${ ( oldAmount + balance == total_amount ) ? balance + oldAmount - amount : balance - amount}
         WHERE code = ? ;
       `
-      console.log( balanceQuery );
       await db.raw(balanceQuery, [code]);
 
       res.sendStatus(201);

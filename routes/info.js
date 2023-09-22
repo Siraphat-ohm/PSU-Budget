@@ -67,8 +67,10 @@ router.get('/:id', async (req, res) => {
           INNER JOIN facs ON facs.id = items.facID
           WHERE disbursed_items.id = ? ;
             `, [req.params.id]);
+          console.log(data[0][0].date)
         res.status(200).json(...data[0]);
     } catch (error) {
+      console.log(error.message);
         res.status(404).json(error.message);
     }
 });
