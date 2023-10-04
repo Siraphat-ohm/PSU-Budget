@@ -58,7 +58,7 @@ router.get('/items-disbursed', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', async(req, res) => {
     try {
         const data = await db.raw( 
         `SELECT disbursed_items.id, facs.fac, items.code, items.name, psu_code, items.balance , withdrawal_amount, date
@@ -73,6 +73,35 @@ router.get('/:id', async (req, res) => {
       console.log(error.message);
         res.status(404).json(error.message);
     }
+});
+
+router.post('/report', async(req, res) => {
+  try {
+    const { startDate, endDate, fac } = req.body;
+    const query = `
+      SELECT f.fac, p.plan, pd.product, t.type, di.code, 
+            i.name, di.psu_code, di.withdrawal_amount,
+            di.date
+      FROM disbursed_items as di
+      INNER JOIN items as i
+      ON i.code = di.code
+      INNER JOIN products as pd
+      ON i.productID = pd.id
+      INNER JOIN plans as p
+      ON pd.planID = p.id
+      INNER JOIN types as t
+      ON i.typeID = t.id
+      INNER JOIN facs as f
+      ON i.facID = f.id
+      WHERE i.facID = ${fac}
+      AND di.date BETWEEN '${startDate}' AND '${endDate}';
+    `
+    const data = await db.raw(query);
+    
+    res.json( data[0] );
+  } catch (error) {
+    console.log(error.message);
+  }
 });
 
 module.exports = router;
