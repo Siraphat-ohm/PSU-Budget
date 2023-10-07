@@ -17,6 +17,7 @@ app.use( "/api/auth", require("./routes/auth") );
 app.use(verify);
 app.use("/api/budget", require("./routes/budget") );
 app.use("/api/info", require("./routes/info") );
+app.use("/api/report", require("./routes/report"));
 
 app.listen(process.env.PORT, ()=>{
     console.log(`started in port ${process.env.PORT}`);

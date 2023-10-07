@@ -39,7 +39,8 @@ router.get( '/options/:opt', async( req, res ) => {
       }
 
     } catch(error) {
-        res.status(500).json(error.message);
+        console.log(error.message);
+        res.status(500).json( {error: "Internal Server Error"} );
     }
 } );
 
@@ -54,54 +55,27 @@ router.get('/items-disbursed', async (req, res) => {
       ) ;
     res.json(data[0]);
   } catch (error) {
-    res.json(error);
+    console.log(error.message);
+    res.status(500).json( {error: "Internal Server Error"} );
   }
 });
 
 router.get('/:id', async(req, res) => {
     try {
-        const data = await db.raw( 
-        `SELECT disbursed_items.id, facs.fac, items.code, items.name, psu_code, items.balance , withdrawal_amount, date
+        const query = `
+          SELECT disbursed_items.id, facs.fac, items.code, items.name, 
+                  psu_code, items.balance , withdrawal_amount, date
           FROM disbursed_items INNER JOIN items
           ON items.code = disbursed_items.code
           INNER JOIN facs ON facs.id = items.facID
           WHERE disbursed_items.id = ? ;
-            `, [req.params.id]);
-          console.log(data[0][0].date)
+        `
+        const data = await db.raw(query, [req.params.id]);
         res.status(200).json(...data[0]);
     } catch (error) {
       console.log(error.message);
-        res.status(404).json(error.message);
+      res.status(500).json( {error: "Internal Server Error"} );
     }
-});
-
-router.post('/report', async(req, res) => {
-  try {
-    const { startDate, endDate, fac } = req.body;
-    const query = `
-      SELECT f.fac, p.plan, pd.product, t.type, di.code, 
-            i.name, di.psu_code, di.withdrawal_amount,
-            di.date
-      FROM disbursed_items as di
-      INNER JOIN items as i
-      ON i.code = di.code
-      INNER JOIN products as pd
-      ON i.productID = pd.id
-      INNER JOIN plans as p
-      ON pd.planID = p.id
-      INNER JOIN types as t
-      ON i.typeID = t.id
-      INNER JOIN facs as f
-      ON i.facID = f.id
-      WHERE i.facID = ${fac}
-      AND di.date BETWEEN '${startDate}' AND '${endDate}';
-    `
-    const data = await db.raw(query);
-    
-    res.json( data[0] );
-  } catch (error) {
-    console.log(error.message);
-  }
 });
 
 module.exports = router;
