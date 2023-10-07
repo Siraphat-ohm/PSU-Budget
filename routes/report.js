@@ -23,34 +23,46 @@ router.post('/', async(req, res) => {
   try {
     const { startDate, endDate, fac } = req.body;
     const query = `
-      SELECT di.code, i.name, di.withdrawal_amount, di.psu_code,
-            di.date, f.fac, p.plan, pd.product, t.type, si.totalAmount
-      FROM disbursed_items as di
-      INNER JOIN items as i
-      ON i.code = di.code
-      INNER JOIN ( 
-  	      SELECT facID, SUM( total_amount ) as totalAmount
-  	      FROM items
-  	      GROUP BY facID
-      ) as si
-      ON si.facID = di.facID
-      INNER JOIN products as pd
-      ON i.productID = pd.id
-      INNER JOIN plans as p
-      ON pd.planID = p.id
-      INNER JOIN types as t
-      ON i.typeID = t.id
-      INNER JOIN facs as f
-      ON i.facID = f.id
-      WHERE di.date BETWEEN ? AND ?
-      ${ fac == 0 ? "" : `AND di.facID = ${fac} ;` }
-    `
+        SELECT 
+            di.id,
+            di.code, 
+            li.name, 
+            f.fac, 
+            pd.plan, 
+            pd.product, 
+            t.type, 
+            di.withdrawal_amount, 
+            di.date,
+            nli.totalAmount, 
+            di.psu_code
+        FROM disbursed_items AS di
+        JOIN items AS li 
+            ON li.code = di.code
+        JOIN facs AS f ON f.id = li.facID
+        JOIN (
+            SELECT pd.product, p.plan, pd.id, p.id AS plan_id
+            FROM products AS pd
+            JOIN plans AS p ON p.id = pd.planID 
+        ) AS pd 
+        ON li.productID = pd.id
+        JOIN types AS t 
+            ON t.id = li.typeID
+        JOIN (
+            SELECT facID, productID, typeID, SUM(li.total_amount) AS totalAmount
+            FROM items AS li
+            GROUP BY facID, productID, typeID
+        ) AS nli ON nli.facID = li.facID
+                AND nli.productID = li.productID
+                AND nli.typeID = li.typeID
+        WHERE date BETWEEN ? AND ?
+        ${ !(fac == 0) ? `AND li.facID = ${fac}` : "" }
+`
     const data = await db.raw(query, [startDate, endDate]);
 
     const result = []
     const seen = new Set()
     data[0].forEach( item => {
-        const { code, name, withdrawal_amount, psu_code, date, fac, plan, product, type, totalAmount } = item
+        const { id, code, name, withdrawal_amount, psu_code, date, fac, plan, product, type, totalAmount } = item
         if (!seen.has(fac)){
             seen.add(fac)
             result.push(
@@ -61,8 +73,9 @@ router.post('/', async(req, res) => {
                             product,
                             type, 
                             totalAmount, 
-                            item: [ 
+                            items: [ 
                                 {
+                                    id,
                                     code, 
                                     name, 
                                     withdrawal_amount, 
@@ -85,8 +98,9 @@ router.post('/', async(req, res) => {
                         product,
                         type, 
                         totalAmount,
-                        item:[
+                        items:[
                             {
+                                id,
                                 code, 
                                 name, 
                                 withdrawal_amount, 
@@ -97,8 +111,9 @@ router.post('/', async(req, res) => {
                     }
                 )
             } else {
-                result[indexFac][fac][indexOfValues].item.push( 
+                result[indexFac][fac][indexOfValues].items.push( 
                     { 
+                        id,
                         code,
                         name,
                         withdrawal_amount, 
@@ -112,6 +127,7 @@ router.post('/', async(req, res) => {
 
     res.json( result );
   } catch (error) {
+    console.log(error.message);
     res.status(500).json( {error: "Internal Server Error"} );
   }
 });
