@@ -50,7 +50,7 @@ router.get('/items-disbursed', async (req, res) => {
       ` SELECT disbursed_items.id, disbursed_items.code, items.name, psu_code, withdrawal_amount, date
         FROM disbursed_items 
         INNER JOIN items ON items.code = disbursed_items.code
-        ;
+        ORDER BY disbursed_items.id DESC;
       `
       ) ;
     res.json(data[0]);

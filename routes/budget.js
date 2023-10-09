@@ -15,6 +15,7 @@ router.post('/disburse', async (req, res) => {
       if ( balanceQuery[0].length === 0 ) res.status(404).json( {error: "ไม่พบitemcode"});
       let balance = Number(balanceQuery[0][0].balance);
       let newBalance = balance - Number(amount);
+      console.log(newBalance);
       if ( newBalance <= 0 ) return res.status(404).json( {error: "ยอดเงินไม่เพียงพอ"});
       
       await db.raw(`

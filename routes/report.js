@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const excelJs = require("exceljs")
 
 const db = require("../db/index");
 
@@ -19,9 +20,7 @@ router.get('/opt', async(req, res) => {
   }
 });
 
-router.post('/', async(req, res) => {
-  try {
-    const { startDate, endDate, fac } = req.body;
+const reportData = async( startDate, endDate, facID) => {
     const query = `
         SELECT 
             di.id,
@@ -55,17 +54,17 @@ router.post('/', async(req, res) => {
                 AND nli.productID = li.productID
                 AND nli.typeID = li.typeID
         WHERE date BETWEEN ? AND ?
-        ${ !(fac == 0) ? `AND li.facID = ${fac}` : "" }
+        ${ !(facID == 0) ? `AND li.facID = ${facID}` : "" }
 `
     const data = await db.raw(query, [startDate, endDate]);
 
-    const result = []
+    const formattedData = []
     const seen = new Set()
     data[0].forEach( item => {
         const { id, code, name, withdrawal_amount, psu_code, date, fac, plan, product, type, totalAmount } = item
         if (!seen.has(fac)){
             seen.add(fac)
-            result.push(
+            formattedData.push(
                 {
                     [fac]: [
                         { 
@@ -89,10 +88,10 @@ router.post('/', async(req, res) => {
             )
         
         } else if (seen.has(fac)){
-            let indexFac = result.findIndex(item => Object.keys(item) == fac);
-            let indexOfValues = result[indexFac][fac].findIndex(item => item.plan == plan && item.product == product && item.type == type);
+            let indexFac = formattedData.findIndex(item => Object.keys(item) == fac);
+            let indexOfValues = formattedData[indexFac][fac].findIndex(item => item.plan == plan && item.product == product && item.type == type);
             if (indexOfValues == -1){
-                result[indexFac][fac].push( 
+                formattedData[indexFac][fac].push( 
                     { 
                         plan, 
                         product,
@@ -111,7 +110,7 @@ router.post('/', async(req, res) => {
                     }
                 )
             } else {
-                result[indexFac][fac][indexOfValues].items.push( 
+                formattedData[indexFac][fac][indexOfValues].items.push( 
                     { 
                         id,
                         code,
@@ -123,13 +122,62 @@ router.post('/', async(req, res) => {
                 )
             }
         }
-    })
+    });
 
-    res.json( result );
+    return formattedData;
+}
+
+router.post('/', async(req, res) => {
+  try {
+    const { startDate, endDate, fac } = req.body;
+
+    const data = await reportData( startDate, endDate, fac );
+
+    res.json(data)
+
   } catch (error) {
     console.log(error.message);
     res.status(500).json( {error: "Internal Server Error"} );
   }
+});
+
+router.post('/createExcel', async(req, res) => {
+    try {
+        const { startDate, endDate, fac } = req.body;
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=report.xlsx');
+        let wb = new excelJs.Workbook();
+        let ws = wb.addWorksheet("report");
+        const data = await reportData( startDate, endDate, fac );
+
+        data.forEach( fac => {
+            const facName = Object.keys(fac)[0];
+            fac[facName].forEach( item => {
+                const { plan, product, type, items } = item;
+                let { totalAmount } = item;
+                ws.addRow( [ facName ] );
+                ws.addRow( [ plan ] );
+                ws.addRow( [ product ] );
+                ws.addRow( [ type, "เงินที่ได้รับ", totalAmount, 'บาท' ] );
+                ws.addRow( [ "itemcode", "ชื่อรายการ", "เลขที่ มอ.", "จำนวนเงินที่เบิกจ่าย", "วันที่เบิกจ่าย", "ยอดเงินคงเหลือ" ] );
+                items.forEach( item => {
+                    const { code, name, date, psu_code } = item;
+                    let { withdrawal_amount } = item;
+                    withdrawal_amount = parseFloat(withdrawal_amount);
+                    totalAmount = parseFloat(totalAmount) - withdrawal_amount;
+                    ws.addRow( [ code, name, psu_code, withdrawal_amount, date, totalAmount  ] );
+                })
+                ws.addRow( [ "ยอดเงินคงเหลือ", totalAmount, "บาท"  ] );
+            });
+            ws.addRow();
+        })
+
+        await wb.xlsx.write(res)
+        res.end();
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json( {error: "Internal Server Error"} );
+    }
 });
 
 module.exports = router;
