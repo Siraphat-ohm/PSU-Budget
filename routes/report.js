@@ -1,8 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const excelJs = require("exceljs")
+const dayjs = require('dayjs');
+const buddhistEra = require('dayjs/plugin/buddhistEra');
 
 const db = require("../db/index");
+
+dayjs.extend(buddhistEra);
 
 router.get('/opt', async(req, res) => {
   try {
@@ -130,8 +134,9 @@ const reportData = async( startDate, endDate, facID) => {
 router.post('/', async(req, res) => {
   try {
     const { startDate, endDate, fac } = req.body;
-
-    const data = await reportData( startDate, endDate, fac );
+    const formatStartDate = dayjs(startDate).format("BBBB-MM-DD");
+    const formatEndtDate = dayjs(endDate).format("BBBB-MM-DD");
+    const data = await reportData( formatStartDate, formatEndtDate, fac );
 
     res.json(data)
 
@@ -144,6 +149,7 @@ router.post('/', async(req, res) => {
 router.post('/createExcel', async(req, res) => {
     try {
         const { startDate, endDate, fac } = req.body;
+        console.log(req.body);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename=report.xlsx');
         let wb = new excelJs.Workbook();
@@ -172,7 +178,7 @@ router.post('/createExcel', async(req, res) => {
             ws.addRow();
         })
 
-        await wb.xlsx.write(res)
+        await wb.xlsx.write(res);
         res.end();
     } catch (error) {
         console.log(error.message);

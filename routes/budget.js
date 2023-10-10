@@ -1,12 +1,16 @@
 const express = require("express");
 const router = express.Router();
+const dayjs = require('dayjs');
+const buddhistEra = require('dayjs/plugin/buddhistEra');
 
-const db = require("../db/index")
+const db = require("../db/index");
+
+dayjs.extend(buddhistEra);
 
 router.post('/disburse', async (req, res) => {
     try {
       const { code, psu_code, amount, date, fac } = req.body;
-      const formattedDate = date ? new Date(date).toISOString().slice(0, 10) : null;
+      const formattedDate = dayjs(date).format("BBBB-MM-DD");
       const balanceQuery = await db.raw(`
         SELECT balance 
         FROM items 
@@ -15,7 +19,6 @@ router.post('/disburse', async (req, res) => {
       if ( balanceQuery[0].length === 0 ) res.status(404).json( {error: "ไม่พบitemcode"});
       let balance = Number(balanceQuery[0][0].balance);
       let newBalance = balance - Number(amount);
-      console.log(newBalance);
       if ( newBalance <= 0 ) return res.status(404).json( {error: "ยอดเงินไม่เพียงพอ"});
       
       await db.raw(`
@@ -40,9 +43,7 @@ router.post('/disburse', async (req, res) => {
 router.put('/disburse', async (req, res) => {
     try {
       let { id, code, psu_code, amount, date, oldAmount } = req.body;
-      const formattedDate = date ? new Date(date).toISOString().slice(0, 10) : null;
-      console.log("date: ", date);
-      console.log("format date: ", formattedDate);
+      const formattedDate = dayjs(date).format("BBBB-MM-DD");
       const balanceQueryResult = await db.raw(`
         SELECT balance, total_amount
         FROM items 
