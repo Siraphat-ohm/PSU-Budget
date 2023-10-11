@@ -9,7 +9,7 @@ dayjs.extend(buddhistEra);
 
 router.post('/disburse', async (req, res) => {
     try {
-      const { code, psu_code, amount, date, fac } = req.body;
+      const { code, psu_code, amount, date, fac, note } = req.body;
       const formattedDate = dayjs(date).format("BBBB-MM-DD");
       const balanceQuery = await db.raw(`
         SELECT balance 
@@ -22,9 +22,9 @@ router.post('/disburse', async (req, res) => {
       if ( newBalance <= 0 ) return res.status(404).json( {error: "ยอดเงินไม่เพียงพอ"});
       
       await db.raw(`
-        INSERT INTO disbursed_items ( userID, code, withdrawal_amount, psu_code, date, facID ) 
-        VALUES ( ?, ?, ?, ?, ?, ?)
-      `, [req.id, code, amount, psu_code, formattedDate, fac])
+        INSERT INTO disbursed_items ( userID, code, withdrawal_amount, psu_code, date, facID, note ) 
+        VALUES ( ?, ?, ?, ?, ?, ?, ? )
+      `, [req.id, code, amount, psu_code, formattedDate, fac, note])
 
       await db.raw(
         `
@@ -42,7 +42,7 @@ router.post('/disburse', async (req, res) => {
 
 router.put('/disburse', async (req, res) => {
     try {
-      let { id, code, psu_code, amount, date, oldAmount } = req.body;
+      let { id, code, psu_code, amount, date, oldAmount, note } = req.body;
       const formattedDate = dayjs(date).format("BBBB-MM-DD");
       const balanceQueryResult = await db.raw(`
         SELECT balance, total_amount
@@ -63,6 +63,7 @@ router.put('/disburse', async (req, res) => {
       if ( amount ) update_column.push(`withdrawal_amount = ${amount}`);
       if ( psu_code ) update_column.push(`psu_code = '${psu_code}'`);
       if ( formattedDate ) update_column.push(`date = '${formattedDate}'`);
+      if ( note ) update_column.push(`note = '${note}'` );
 
       const updateQuery = `
         UPDATE disbursed_items

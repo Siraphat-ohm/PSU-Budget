@@ -47,7 +47,7 @@ router.get( '/options/:opt', async( req, res ) => {
 router.get('/items-disbursed', async (req, res) => {
   try {
     const data = await db.raw( 
-      ` SELECT disbursed_items.id, disbursed_items.code, items.name, psu_code, withdrawal_amount, date
+      ` SELECT disbursed_items.id, disbursed_items.code, items.name, psu_code, withdrawal_amount, date, note
         FROM disbursed_items 
         INNER JOIN items ON items.code = disbursed_items.code
         ORDER BY disbursed_items.id DESC;
@@ -64,7 +64,7 @@ router.get('/:id', async(req, res) => {
     try {
         const query = `
           SELECT disbursed_items.id, facs.fac, items.code, items.name, 
-                  psu_code, items.balance , withdrawal_amount, date
+                  psu_code, items.balance , withdrawal_amount, date, note
           FROM disbursed_items INNER JOIN items
           ON items.code = disbursed_items.code
           INNER JOIN facs ON facs.id = items.facID
