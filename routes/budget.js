@@ -1,16 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const dayjs = require('dayjs');
-const buddhistEra = require('dayjs/plugin/buddhistEra');
-
+const { ADtoBE } = require('../util/date');
 const db = require("../db/index");
-
-dayjs.extend(buddhistEra);
 
 router.post('/disburse', async (req, res) => {
     try {
       const { code, psu_code, amount, date, fac, note } = req.body;
-      const formattedDate = dayjs(date).format("BBBB-MM-DD");
+      const formattedDate = ADtoBE(date);
       const balanceQuery = await db.raw(`
         SELECT balance 
         FROM items 
@@ -43,7 +39,7 @@ router.post('/disburse', async (req, res) => {
 router.put('/disburse', async (req, res) => {
     try {
       let { id, code, psu_code, amount, date, oldAmount, note } = req.body;
-      const formattedDate = dayjs(date).format("BBBB-MM-DD");
+      const formattedDate = ADtoBE(date);
       const balanceQueryResult = await db.raw(`
         SELECT balance, total_amount
         FROM items 
