@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { reportDataN } = require('../util/reportData');
+const { reportDataN, reportDataS } = require('../util/reportData');
 const { ADtoBE } = require("../util/date");
 
 const db = require("../db/index");
@@ -26,10 +26,13 @@ router.post('/', async(req, res) => {
     const { startDate, endDate, fac, begin, mode } = req.body;
     const formatStartDate = ADtoBE(startDate);
     const formatEndtDate = ADtoBE(endDate);
-    const data = await reportDataN( formatStartDate, formatEndtDate, fac, begin );
-
+    let data;
+    if ( mode == 'N' ){
+      data = await reportDataN( formatStartDate, formatEndtDate, fac, begin );
+    } else if( mode == 'S' ){
+      data = await reportDataS( formatStartDate, formatEndtDate, fac, begin );
+    }
     res.json(data)
-
   } catch (error) {
     console.log(error.message);
     res.status(500).json( {error: "Internal Server Error"} );
