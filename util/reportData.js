@@ -12,7 +12,7 @@ const reportDataN = async( startDate, endDate, facID, begin ) => {
             t.type, 
             di.withdrawal_amount, 
             di.date,
-            nli.totalAmount, 
+            nli.total_amount, 
             di.psu_code,
             li.status,
             di.note
@@ -29,7 +29,7 @@ const reportDataN = async( startDate, endDate, facID, begin ) => {
         JOIN types AS t 
             ON t.id = li.typeID
         JOIN (
-            SELECT facID, productID, typeID, SUM(li.total_amount) AS totalAmount
+            SELECT facID, productID, typeID, SUM(li.total_amount) AS total_amount
             FROM items AS li
             GROUP BY facID, productID, typeID
         ) AS nli ON nli.facID = li.facID
@@ -44,7 +44,7 @@ const reportDataN = async( startDate, endDate, facID, begin ) => {
     const formattedData = []
     const seen = new Set()
     data.forEach( item => {
-        const { id, code, name, withdrawal_amount, psu_code, date, fac, plan, product, type, totalAmount } = item
+        const { id, code, name, withdrawal_amount, psu_code, date, fac, plan, product, type, total_amount, note } = item
         if (!seen.has(fac)){
             seen.add(fac)
             formattedData.push(
@@ -54,15 +54,16 @@ const reportDataN = async( startDate, endDate, facID, begin ) => {
                             plan, 
                             product,
                             type, 
-                            totalAmount, 
-                            items: [ 
+                            total_amount, 
+                            records: [ 
                                 {
                                     id,
                                     code, 
                                     name, 
                                     withdrawal_amount, 
                                     psu_code,
-                                    date
+                                    date,
+                                    note
                                 }
                             ] 
                         }
@@ -79,28 +80,30 @@ const reportDataN = async( startDate, endDate, facID, begin ) => {
                         plan, 
                         product,
                         type, 
-                        totalAmount,
-                        items:[
+                        total_amount,
+                        records:[
                             {
                                 id,
                                 code, 
                                 name, 
                                 withdrawal_amount, 
                                 psu_code,
-                                date
+                                date,
+                                note
                             }
                         ]
                     }
                 )
             } else {
-                formattedData[indexFac][fac][indexOfValues].items.push( 
+                formattedData[indexFac][fac][indexOfValues].records.push( 
                     { 
                         id,
                         code,
                         name,
                         withdrawal_amount, 
                         psu_code,
-                        date
+                        date,
+                        note
                     }
                 )
             }
@@ -110,65 +113,85 @@ const reportDataN = async( startDate, endDate, facID, begin ) => {
     return formattedData;
 }
 
-const reportDataS = async( startDate, endDate, facID, begin ) => {
+const reportDataD = async( startDate, endDate, facID, begin ) => {
     const query = `
-        SELECT 
-            f.fac, 
-            li.name, 
-            li.total_amount, 
-            di.code, 
-            di.psu_code, 
-            di.withdrawal_amount, 
-            di.date,
-            di.note
-        FROM disbursed_items AS di
-        INNER JOIN items AS li
-            ON di.code = li.code
-        INNER JOIN facs AS f
-            ON di.facID = f.id
-        WHERE li.status = 'S'
+        SELECT f.fac, 
+               li.name, 
+               di.code, 
+               di.date, 
+               di.psu_code, 
+               li.total_amount, 
+               di.note,
+               di.withdrawal_amount 
+        FROM disbursed_items AS di 
+        JOIN items AS li 
+            ON li.code = di.code 
+        JOIN facs AS f 
+            ON li.facID = f.id
+        WHERE li.status = 'D'
         ${ begin ? '' : `AND date BETWEEN '${startDate}' AND '${endDate}'` }
         ${ !(facID == 0) ? `AND li.facID = ${facID}` : "" }
         ORDER BY date asc;
     `
 
     const data = (await db.raw(query))[0];
+    const seen = new Set();
     const formattedData = []
-    const seen = new Set()
     data.forEach( item => {
-        const { fac, name, total_amount, code, psu_code, date, withdrawal_amount } = item
+        const { code, name, withdrawal_amount, psu_code, date, fac, total_amount, note } = item;
         if ( !seen.has(fac) ){
             seen.add(fac);
             formattedData.push(
                 {
-                    [fac]:{
-                        name, total_amount, items:[
+                    [fac] : [
+                        {
+                            code,
+                            name,
+                            total_amount,
+                            records: [
+                                {
+                                    date,
+                                    psu_code,
+                                    withdrawal_amount,
+                                    note
+                                }
+                            ]
+                        }
+                    ]
+                }
+            )
+        } else {
+            const indexFac = formattedData.findIndex(item => Object.keys(item) == fac);
+            const indexOfValues = formattedData[indexFac][fac].findIndex(item => item.code == code );
+            if ( indexOfValues == -1 ){
+                formattedData[indexFac][fac].push( 
+                    { 
+                        code,
+                        name,
+                        total_amount,
+                        records:[
                             {
-                                code,
-                                name,
-                                psu_code,
                                 date,
-                                withdrawal_amount
+                                psu_code,
+                                withdrawal_amount,
+                                note
                             }
                         ]
                     }
-                }
-            )
-        } else if (seen.has(fac)){
-            const indexFac = formattedData.findIndex(item => Object.keys(item) == fac);
-            formattedData[indexFac][fac].items.push(
-                {
-                    code,
-                    name,
-                    psu_code,
-                    date,
-                    withdrawal_amount
-                }
-            )
+                )
+            } else {
+                formattedData[indexFac][fac][indexOfValues].records.push( 
+                    { 
+                        date,
+                        psu_code,
+                        withdrawal_amount,
+                        note
+                } )
+            }
         }
-    })
+    });
 
     return formattedData;
 }
 
-module.exports = { reportDataN, reportDataS }
+module.exports = { reportDataN, reportDataD }
