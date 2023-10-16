@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { reportDataN, reportDataD } = require('../util/reportData');
+const { reportDataN, reportDataD, reportDataA } = require('../util/reportData');
 const { ADtoBE } = require("../util/date");
 
 const db = require("../db/index");
@@ -31,6 +31,8 @@ router.post('/', async(req, res) => {
       data = await reportDataN( formatStartDate, formatEndtDate, fac, begin );
     } else if( mode == 'D' ){
       data = await reportDataD( formatStartDate, formatEndtDate, fac, begin );
+    } else if ( mode == 'A' ){
+      data = await reportDataA( formatStartDate, formatEndtDate, fac, begin );
     }
     res.json(data)
   } catch (error) {

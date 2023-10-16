@@ -109,7 +109,7 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Withdrawal processed successfully', id });
   } catch (error) {
     console.log(error.message);
-    res.json(error.message);
+    res.status(500).json( {error: "Internal Server Error"} );
   }
 });
 
@@ -124,7 +124,7 @@ router.post('/additemcode', async(req, res) => {
     await db.raw(`
       INSERT INTO items ( code, name, total_amount, facID, typeID, productID, status, balance ) 
       VALUES ( ?, ?, ?, ?, ?, ?, ?, ? )
-    `, [code, name, total_amount, fac, type, product, 's', total_amount]);
+    `, [code, name, total_amount, fac, type, product, 'S', total_amount]);
     res.json(req.body);
   } catch (error) {
     console.log(error.message);
