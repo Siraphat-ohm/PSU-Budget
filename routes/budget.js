@@ -29,7 +29,7 @@ router.post('/disburse', async (req, res) => {
         WHERE code = ? ;
         `, [newBalance, code]);
       
-      res.sendStatus(201);
+      res.sendStatus( 201 );
     } catch (error) {
       console.log(error.message);
       res.status(500).json( { error: "Internal Server Error"} );
@@ -125,7 +125,7 @@ router.post('/additemcode', async(req, res) => {
       INSERT INTO items ( code, name, total_amount, facID, typeID, productID, status, balance ) 
       VALUES ( ?, ?, ?, ?, ?, ?, ?, ? )
     `, [code, name, total_amount, fac, type, product, 'S', total_amount]);
-    res.json(req.body);
+    res.sendStatus( 201 );
   } catch (error) {
     console.log(error.message);
     res.status(500).json( {error: "Internal Server Error"} );

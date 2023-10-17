@@ -1,6 +1,6 @@
 const db = require("../db/index");
 
-const reportDataN = async( startDate, endDate, facID, begin ) => {
+const NormalReport = async( startDate, endDate, facID, begin ) => {
     const query = `
         SELECT 
             di.code, 
@@ -112,7 +112,7 @@ const reportDataN = async( startDate, endDate, facID, begin ) => {
     return formattedData;
 }
 
-const reportDataD = async( startDate, endDate, facID, begin ) => {
+const DeprivationReport = async( startDate, endDate, facID, begin ) => {
     const query = `
         SELECT f.fac, 
                li.name, 
@@ -194,7 +194,7 @@ const reportDataD = async( startDate, endDate, facID, begin ) => {
 }
 
 
-const reportDataA = async (startDate, endDate, facID, begin) => {
+const OverviewReport = async (startDate, endDate, facID, begin) => {
     const baseQuery = `
         SELECT 
             di.code, 
@@ -242,5 +242,45 @@ const reportDataA = async (startDate, endDate, facID, begin) => {
     }
 };
 
+const BalanceReport = async( facID ) => {
+    const baseQuery = `
+        SELECT li.code,
+               li.name,
+               f.fac,
+               pd.plan,
+               pd.product,
+               t.type,
+               li.total_amount,
+               li.balance,
+               li.status
+        FROM items AS li
+        JOIN facs AS f
+            ON li.facID = f.id
+        JOIN (
+            SELECT pd.product, p.plan, pd.id, p.id AS plan_id
+            FROM products AS pd
+            JOIN plans AS p ON p.id = pd.planID
+        ) AS pd ON li.productID = pd.id
+        JOIN types AS t ON t.id = li.typeID
+    `
+    const whereClause = [];
+    if (facID !== 0) {
+        whereClause.push(`li.facID = ${facID}`);
+    }
 
-module.exports = { reportDataN, reportDataD, reportDataA }
+    const query = `
+        ${baseQuery}
+        ${whereClause.length > 0 ? 'WHERE ' + whereClause.join(' AND ') : ''}
+    `;
+
+    try {
+        const result = await db.raw(query);
+        return result[0];
+    } catch (error) {
+        console.error('Error executing the query:', error);
+        throw error;
+    } 
+}
+
+
+module.exports = { NormalReport, DeprivationReport, OverviewReport, BalanceReport }
