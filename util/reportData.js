@@ -1,6 +1,6 @@
 const db = require("../db/index");
 
-const NormalReport = async( startDate, endDate, facID, begin ) => {
+const NormalReport = async( startDate, endDate, facID, begin, status ) => {
     const query = `
         SELECT 
             di.code, 
@@ -30,13 +30,14 @@ const NormalReport = async( startDate, endDate, facID, begin ) => {
         JOIN (
             SELECT facID, productID, typeID, SUM(li.total_amount) AS total_amount
             FROM items AS li
+            WHERE status = '${status}'
             GROUP BY facID, productID, typeID
         ) AS nli ON nli.facID = li.facID
                 AND nli.productID = li.productID
                 AND nli.typeID = li.typeID
-        WHERE li.status != 'D'
-        ${ begin ? '' : `AND date BETWEEN '${startDate}' AND '${endDate}'` }
+        WHERE li.status = '${status}'
         ${ !(facID == 0) ? `AND li.facID = ${facID}` : "" }
+        ${ begin ? '' : `AND date BETWEEN '${startDate}' AND '${endDate}'` }
         ORDER BY date asc;
         `
     const data = (await db.raw(query))[0];

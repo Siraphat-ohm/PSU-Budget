@@ -4,9 +4,11 @@ const { BalanceReport, DeprivationReport, NormalReport, OverviewReport } = requi
 const { ADtoBE } = require("../util/date");
 
 const db = require("../db/index");
+const { logger } = require("../util/logger");
 
 router.get('/opt', async(req, res) => {
   try {
+    logger.info(`${req.method} ${req.url}`);
     const query = `
       SELECT id, fac 
       FROM facs; 
@@ -15,20 +17,23 @@ router.get('/opt', async(req, res) => {
 
     const fac_opt = data[0].map( f => { return { id:f.id, label: f.fac } });
     fac_opt.unshift( { id:0, label: "all" } );
-    res.json(fac_opt);
+    logger.info(`${req.method} ${req.url} - Success`);
+    res.status(200).json(fac_opt);
   } catch (error) {
+    logger.error(`${req.method} ${req.url} ${error}`);
     res.status(500).json( {error: "Internal Server Error"} );
   }
 });
 
 router.post('/', async(req, res) => {
   try {
-    const { startDate, endDate, fac, begin, mode } = req.body;
+    const { startDate, endDate, fac, begin, mode, status } = req.body;
+    logger.info(`${req.method} ${req.url} ${JSON.stringify(req.body)}`);
     const formatStartDate = ADtoBE(startDate);
     const formatEndtDate = ADtoBE(endDate);
     let data;
     if ( mode == 'N' ){
-      data = await NormalReport( formatStartDate, formatEndtDate, fac, begin );
+      data = await NormalReport( formatStartDate, formatEndtDate, fac, begin, status );
     } else if( mode == 'D' ){
       data = await DeprivationReport( formatStartDate, formatEndtDate, fac, begin );
     } else if ( mode == 'A' ){
@@ -36,9 +41,10 @@ router.post('/', async(req, res) => {
     } else if ( mode == 'B' ){
       data = await BalanceReport( fac );
     }
-    res.json(data)
+    logger.info(`${req.method} ${req.url} - Success`);
+    res.status(200).json(data)
   } catch (error) {
-    console.log(error.message);
+    logger.error(`${req.method} ${req.url} ${error}`);
     res.status(500).json( {error: "Internal Server Error"} );
   }
 });

@@ -2,20 +2,29 @@ const express = require("express");
 const router = express.Router();
 const { ADtoBE } = require('../util/date');
 const db = require("../db/index");
+const { logger } = require('../util/logger');
 
 router.post('/disburse', async (req, res) => {
     try {
       const { code, psu_code, amount, date, fac, note } = req.body;
+      logger.info( `${req.method} ${req.url} ${JSON.stringify(req.body)}`);
       const formattedDate = ADtoBE(date);
       const balanceQuery = await db.raw(`
         SELECT balance 
         FROM items 
         WHERE code = ? ;
       `, [code])
-      if ( balanceQuery[0].length === 0 ) res.status(404).json( {error: "ไม่พบitemcode"});
+      if ( balanceQuery[0].length === 0 ) {
+        logger.warn( `${req.method} ${req.url} Itemcode not found.`);
+        res.status(404).json( {error: "ไม่พบItemcode"});
+      }
       let balance = Number(balanceQuery[0][0].balance);
       let newBalance = balance - Number(amount);
-      if ( newBalance <= 0 ) return res.status(404).json( {error: "ยอดเงินไม่เพียงพอ"});
+      console.log(newBalance);
+      if ( newBalance < 0 ){
+        logger.warn( `${req.method} ${req.url} Insufficient balance.`);
+        return res.status(404).json( {error: "ยอดเงินไม่เพียงพอ"});
+      } 
       
       await db.raw(`
         INSERT INTO disbursed_items ( userID, code, withdrawal_amount, psu_code, date, facID, note ) 
@@ -29,9 +38,10 @@ router.post('/disburse', async (req, res) => {
         WHERE code = ? ;
         `, [newBalance, code]);
       
+      logger.info( `${req.method} ${req.url} - Success`);
       res.sendStatus( 201 );
     } catch (error) {
-      console.log(error.message);
+      logger.error( `${req.method} ${req.headers['user-agent']} ${req.url} ${error}`);
       res.status(500).json( { error: "Internal Server Error"} );
     }
 });
@@ -39,21 +49,27 @@ router.post('/disburse', async (req, res) => {
 router.put('/disburse', async (req, res) => {
     try {
       let { id, code, psu_code, amount, date, oldAmount, note } = req.body;
+      logger.info( `${req.method} ${req.url} ${JSON.stringify(req.body)}`);
       const formattedDate = ADtoBE(date);
       const balanceQueryResult = await db.raw(`
         SELECT balance, total_amount
         FROM items 
         WHERE code = ? ;
       `, [code])
-      if ( balanceQueryResult[0].length === 0 ) return res.status(404).json( {error: "ไม่พบitemcode"} );
+      if ( balanceQueryResult[0].length === 0 ){
+        logger.warn( `${req.method} ${req.url} Itemcode not found.`);
+        return res.status(404).json( {error: "ไม่พบItemcode"} );
+      } 
       let { balance, total_amount } = balanceQueryResult[0][0];
       balance = Number(balance);
       total_amount = Number(total_amount);
       oldAmount = Number(oldAmount);
       amount = Number(amount);
 
-      if ( balance < amount || (balance + oldAmount) < amount ) return res.status(404).json( {error: "ยอดเงินไม่เพียงพอ"} );
-
+      if ( balance < amount || (balance + oldAmount) < amount ) {
+        logger.warn( `${req.method} ${req.url} Insufficient balance.`);
+        return res.status(404).json( {error: "ยอดเงินไม่เพียงพอ"} );
+      }
 
       const update_column = [];
       if ( amount ) update_column.push(`withdrawal_amount = ${amount}`);
@@ -75,10 +91,11 @@ router.put('/disburse', async (req, res) => {
       `
       await db.raw(balanceQuery, [code]);
 
+      logger.info( `${req.method} ${req.url} - Success`);
       res.sendStatus(201);
 
     } catch (error) {
-      console.log(error.message);
+      logger.error( `${req.method} ${req.headers['user-agent']} ${req.url} ${error}`);
       res.status(500).json( {error: "Internal Server Error"} );
     }
 });
@@ -86,6 +103,7 @@ router.put('/disburse', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    logger.info( `${req.method} ${req.url}`);
     const withdrawalQuery = await db.raw( 
       `SELECT withdrawal_amount, code
        FROM disbursed_items
@@ -106,9 +124,10 @@ router.delete('/:id', async (req, res) => {
         WHERE id = ? ;
     `, [id]);
 
-    res.json({ message: 'Withdrawal processed successfully', id });
+    logger.info( `${req.method} ${req.url} - Success`);
+    res.sendStatus(202);
   } catch (error) {
-    console.log(error.message);
+    logger.error( `${req.method} ${req.headers['user-agent']} ${req.url} ${error.message}`);
     res.status(500).json( {error: "Internal Server Error"} );
   }
 });
@@ -116,21 +135,27 @@ router.delete('/:id', async (req, res) => {
 router.post('/additemcode', async(req, res) => {
   try {
     const { code, total_amount, name, fac, type, product } = req.body;
+    logger.info( `${req.method} ${req.url} ${JSON.stringify(req.body)}`);
     const codeQuery = await db.raw(`
       SELECT code FROM items
       WHERE code = ? ;
     `, [code]);
-    if ( !!codeQuery[0][0] ) return res.status(404).json( { error: 'Itemcode ซ้ำ' })
+
+    if ( !!codeQuery[0][0] ){ 
+      logger.warn( `${req.method} ${req.url} Itemcode duplicate.`);
+      return res.status(400).json( { error: 'Itemcode ซ้ำ' })
+    } 
+
     await db.raw(`
       INSERT INTO items ( code, name, total_amount, facID, typeID, productID, status, balance ) 
       VALUES ( ?, ?, ?, ?, ?, ?, ?, ? )
     `, [code, name, total_amount, fac, type, product, 'S', total_amount]);
-    res.sendStatus( 201 );
+    logger.info( `${req.method} ${req.url} - Success`);
+    res.sendStatus(201);
   } catch (error) {
-    console.log(error.message);
+    logger.error( `${req.method} ${req.headers['user-agent']} ${req.url} ${error}`);
     res.status(500).json( {error: "Internal Server Error"} );
   }
-
 });
 
 module.exports = router;
