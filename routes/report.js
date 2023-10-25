@@ -20,7 +20,7 @@ router.get('/opt', async(req, res) => {
     logger.info(`${req.method} ${req.url} - Success`);
     res.status(200).json(fac_opt);
   } catch (error) {
-    logger.error(`${req.method} ${req.url} ${error}`);
+    logger.error(`${error.message}`);
     res.status(500).json( {error: "Internal Server Error"} );
   }
 });
@@ -44,7 +44,7 @@ router.post('/', async(req, res) => {
     logger.info(`${req.method} ${req.url} - Success`);
     res.status(200).json(data)
   } catch (error) {
-    logger.error(`${req.method} ${req.url} ${error}`);
+    logger.error(`${error.message}`);
     res.status(500).json( {error: "Internal Server Error"} );
   }
 });

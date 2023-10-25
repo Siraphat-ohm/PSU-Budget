@@ -29,7 +29,7 @@ router.post('/disburse', async (req, res) => {
       await db.raw(`
         INSERT INTO disbursed_items ( userID, code, withdrawal_amount, psu_code, date, facID, note ) 
         VALUES ( ?, ?, ?, ?, ?, ?, ? )
-      `, [req.id, code, amount, psu_code, formattedDate, fac, note])
+      `, [req.id, code, amount, psu_code, formattedDate, fac, (note ? note : '-')  ])
 
       await db.raw(
         `
@@ -95,7 +95,7 @@ router.put('/disburse', async (req, res) => {
       res.sendStatus(201);
 
     } catch (error) {
-      logger.error( `${req.method} ${req.headers['user-agent']} ${req.url} ${error}`);
+      logger.error( `${error.message}`);
       res.status(500).json( {error: "Internal Server Error"} );
     }
 });
@@ -127,7 +127,7 @@ router.delete('/:id', async (req, res) => {
     logger.info( `${req.method} ${req.url} - Success`);
     res.sendStatus(202);
   } catch (error) {
-    logger.error( `${req.method} ${req.headers['user-agent']} ${req.url} ${error.message}`);
+    logger.error( `${error.message}`);
     res.status(500).json( {error: "Internal Server Error"} );
   }
 });
@@ -153,7 +153,7 @@ router.post('/additemcode', async(req, res) => {
     logger.info( `${req.method} ${req.url} - Success`);
     res.sendStatus(201);
   } catch (error) {
-    logger.error( `${req.method} ${req.headers['user-agent']} ${req.url} ${error}`);
+    logger.error( `${error.message}`);
     res.status(500).json( {error: "Internal Server Error"} );
   }
 });

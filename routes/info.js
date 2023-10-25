@@ -48,7 +48,7 @@ router.get('/options/:opt', async (req, res) => {
       return res.status(200).json(data);
     }
   } catch (error) {
-    logger.error(`${req.method} ${req.url} ${error}`);
+    logger.error(`${req.method} ${req.url} ${error.message}`);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
@@ -66,7 +66,7 @@ router.get('/items-disbursed', async (req, res) => {
     logger.info( `${req.method} ${req.url} - Success`);
     res.status(200).json(data);
   } catch (error) {
-    logger.error( `${req.method} ${req.url} ${error}`);
+    logger.error( `${error.message}`);
     res.status(500).json( {error: "Internal Server Error"} );
   }
 });
@@ -86,7 +86,7 @@ router.get('/:id', async(req, res) => {
         logger.info( `${req.method} ${req.url} - Success`);
         res.status(200).json(...data[0]);
     } catch (error) {
-      logger.error( `${req.method} ${req.url} ${error}`);
+      logger.error( `${error.message}`);
       res.status(500).json( {error: "Internal Server Error"} );
     }
 });

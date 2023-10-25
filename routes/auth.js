@@ -6,7 +6,6 @@ const express = require("express");
 const { logger } = require('../util/logger');
 const router = express.Router();
 
-
 router.post('/signin', async( req, res ) => {
     try {
         const { username, password } = req.body;
@@ -21,7 +20,27 @@ router.post('/signin', async( req, res ) => {
         logger.info( `${req.method} ${req.url} -Success`);
         res.status(200).json( { accessToken, ...userInfo, allowLogin: true } );
     } catch (error) {
-        logger.error(error);
+        logger.error(error.message);
+        res.status(500).json( { error: "Internal Server Error" } );
+    }
+} );
+
+router.post('/signup', async( req, res ) => {
+    try {
+        const { id, username, password, firstname, lastname } = req.body;
+        logger.info( `${req.method} ${req.url}`);
+        if ( !username || !password ) return res.status(404).json( {error : "username and password are required."} )
+        const foundUser = await db.raw(`SELECT * FROM users WHERE username = ?`, [username]);
+        
+        if ( foundUser[0].length != 0 ) return res.status(404).json( { error: "User already exits."} );
+        const query = `
+            INSERT INTO users ( id, username, password, firstname, lastname )
+            VALUES ( ?, ?, ?, ?, ? )
+        `
+        const user = await db.raw(query, [ id, username, bcrypt.hashSync(password, 10), firstname, lastname ]);
+        res.status( 201 ).json( user);
+    } catch (error) {
+        logger.error(error.message);
         res.status(500).json( { error: "Internal Server Error" } );
     }
 } );
